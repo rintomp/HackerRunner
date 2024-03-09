@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hacker Runner</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        background-color: #0f0f0f;
+        color: #fff;
+        font-family: Arial, sans-serif;
+    }
+
+    #canvas {
+        display: block;
+        margin: 0 auto;
+        background-color: #0f0f0f;
+        border: 1px solid #fff;
+    }
+
+    #restart-btn {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #333;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    #game-over-msg {
+        display: none;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-size: 30px;
+    }
+
+    #last-words {
+        display: none;
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+    }
+
+    #last-words input[type="text"] {
+        padding: 5px;
+        width: 200px;
+        margin-top: 10px;
+    }
+
+    #submit-btn {
+        padding: 8px 16px;
+        margin-top: 10px;
+        background-color: #333;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body oncontextmenu="return false;">
+<canvas id="canvas" width="800" height="400"></canvas>
+<button id="restart-btn">Restart</button>
+<div id="game-over-msg"></div>
+<div id="last-words">
+    <div>Game Over</div>
+    <input type="text" id="last-words-input" placeholder="Lets take a rest and eat...">
+    <button id="submit-btn">Submit</button>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const dino = {
+        x: 50,
+        y: canvas.height - 60,
+        width: 50,
+        height: 50,
+        velocity: 0,
+        gravity: 1,
+        jumping: false
+    };
+
+    const obstacle = {
+        x: canvas.width,
+        y: canvas.height - 60,
+        width: 30,
+        height: 50,
+        velocity: 5
+    };
+
+    let score = 0;
+    let isGameOver = false;
+    let highestScore = 0;
+
+    // Check if highest score cookie exists
+    if (document.cookie) {
+        const cookies = document.cookie.split(';');
+        cookies.forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'highestScore') {
+                highestScore = parseInt(value);
+            }
+        });
+    }
+
+    const restartBtn = document.getElementById('restart-btn');
+    const gameOverMsg = document.getElementById('game-over-msg');
+    const lastWords = document.getElementById('last-words');
+    const lastWordsInput = document.getElementById('last-words-input');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function drawDino() {
+        ctx.fillStyle = '#32CD32'; // Green
+        ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+    }
+
+    function drawObstacle() {
+        ctx.fillStyle = '#FF6347'; // Tomato
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    }
+
+    function drawScore() {
+        ctx.fillStyle = '#fff'; // White
+        ctx.font = '20px Arial';
+        ctx.fillText('Score: ' + score, 10, 30);
+        ctx.fillText('Highest Score: ' + highestScore, 10, 60);
+    }
+
+    function draw() {
+        if (!isGameOver) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawDino();
+            drawObstacle();
+            drawScore();
+
+            dino.y += dino.velocity;
+            dino.velocity += dino.gravity;
+
+            if (dino.y >= canvas.height - 60) {
+                dino.y = canvas.height - 60;
+                dino.velocity = 0;
+                dino.jumping = false;
+            }
+
+            if (obstacle.x < -obstacle.width) {
+                obstacle.x = canvas.width;
+                score++;
+            }
+
+            obstacle.x -= obstacle.velocity;
+
+            if (isColliding(dino, obstacle)) {
+                gameOver();
+            }
+
+            requestAnimationFrame(draw);
+        }
+    }
+
+    function jump() {
+        if (!dino.jumping) {
+            dino.velocity = -15;
+            dino.jumping = true;
+        }
+    }
+
+    function isColliding(dino, obstacle) {
+        return (
+            dino.x < obstacle.x + obstacle.width &&
+            dino.x + dino.width > obstacle.x &&
+            dino.y < obstacle.y + obstacle.height &&
+            dino.y + dino.height > obstacle.y
+        );
+    }
+
+    function gameOver() {
+        isGameOver = true;
+        restartBtn.style.display = 'block';
+        gameOverMsg.textContent = 'Game Over';
+        gameOverMsg.style.display = 'block';
+        lastWords.style.display = 'block';
+
+        // Check if current score is higher than highest score
+        if (score > highestScore) {
+            highestScore = score;
+            document.cookie = `highestScore=${highestScore}; expires=Thu, 31 Dec 2099 23:59:59 UTC; path=/`;
+            document.cookie = `c00kies=lets have some c00kies; expires=Thu, 31 Dec 2099 23:59:59 UTC; path=/`;
+        }
+    }
+
+    function restartGame() {
+        isGameOver = false;
+        score = 0;
+        dino.y = canvas.height - 60;
+        obstacle.x = canvas.width;
+        restartBtn.style.display = 'none';
+        gameOverMsg.style.display = 'none';
+        lastWords.style.display = 'none';
+        lastWordsInput.value = ''; // Clear input field
+        requestAnimationFrame(draw);
+    }
+
+    function handleInput() {
+        const inputText = lastWordsInput.value.trim().toLowerCase();
+        if (inputText === 'lets have some c00kies') {
+            alert(atob('U0hFQ09ERXtuZXZlcmdvbm5hZ2l2ZXlvdXVwfQ=='));
+        } else {
+            restartGame();
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space') {
+            jump();
+        }
+    });
+
+    restartBtn.addEventListener('click', restartGame);
+    submitBtn.addEventListener('click', handleInput);
+
+    draw();
+</script>
+</body>
+</html>
